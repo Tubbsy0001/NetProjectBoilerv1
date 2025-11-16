@@ -1,0 +1,16 @@
+@model List<SoapCountryApp.Services.Country>
+
+<h2>Countries</h2>
+
+<table class="table">
+    <thead><tr><th>ISO</th><th>Name</th></tr></thead>
+    <tbody>
+    @foreach(var c in Model)
+    {
+        <tr>
+            <td>@c.ISOCode</td>
+            <td>@c.Name</td>
+        </tr>
+    }
+    </tbody>
+</table>
