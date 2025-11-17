@@ -216,9 +216,18 @@ public class WsdlParser
                 sampleXml = $"<tns:{partName}>{partName}Value</tns:{partName}>";
             }
 
-            var (valueDesc, exampleValue) = DescribeValueMetadata(elementDefinition, schemaContext, resolvedType);
-            var decoratedSample = DecorateSample(sampleXml, valueDesc, exampleValue);
-            descriptors.Add(new WsdlParameterDescriptor(partName, typeName, isArray, decoratedSample.Trim(), description, valueDesc, exampleValue));
+            var metadata = DescribeValueMetadata(elementDefinition, schemaContext, resolvedType);
+            var decoratedSample = DecorateSample(sampleXml, metadata);
+            var exampleValue = metadata.Example ?? metadata.AllowedValues.FirstOrDefault();
+            descriptors.Add(new WsdlParameterDescriptor(
+                partName,
+                typeName,
+                isArray,
+                decoratedSample.Trim(),
+                description,
+                metadata.Description,
+                exampleValue,
+                metadata.AllowedValues));
         }
 
         return descriptors;
@@ -374,15 +383,23 @@ public class WsdlParser
         }
     }
 
-    private static string DecorateSample(string sampleXml, string? valueDescription, string? exampleValue)
+    private static string DecorateSample(string sampleXml, ValueMetadata metadata)
     {
-        var replacement = !string.IsNullOrWhiteSpace(exampleValue)
-            ? exampleValue
-            : (!string.IsNullOrWhiteSpace(valueDescription) ? $"<!-- {valueDescription} -->" : null);
+        var replacement = metadata.Example
+            ?? metadata.AllowedValues.FirstOrDefault()
+            ?? (!string.IsNullOrWhiteSpace(metadata.Description) ? $"<!-- {metadata.Description} -->" : null);
 
-        return !string.IsNullOrWhiteSpace(replacement)
-            ? sampleXml.Replace("{value}", replacement)
-            : sampleXml;
+        if (string.IsNullOrWhiteSpace(replacement))
+        {
+            return sampleXml;
+        }
+
+        var cleaned = Regex.Replace(sampleXml, @">(\\s*)\{value\}(\\s*)<", m => $">{replacement}<", RegexOptions.Multiline);
+        if (cleaned.Contains("{value}"))
+        {
+            cleaned = cleaned.Replace("{value}", replacement);
+        }
+        return cleaned;
     }
 
     private static string? ExtractRootLocalName(string xml)
@@ -585,7 +602,7 @@ public class WsdlParser
 
     private sealed record ValueMetadata(string? Description, string? Example, IReadOnlyList<string> AllowedValues);
 
-    private static (string? description, string? example) DescribeValueMetadata(XElement? element, SchemaContext context, XName? resolvedType)
+    private static ValueMetadata DescribeValueMetadata(XElement? element, SchemaContext context, XName? resolvedType)
     {
         if (element != null)
         {
@@ -613,38 +630,42 @@ public class WsdlParser
         return DescribeBuiltInType(resolvedType);
     }
 
-    private static (string? description, string? example) DescribeSimpleType(XElement simpleType, SchemaContext context, HashSet<XElement> visited)
+    private static ValueMetadata DescribeSimpleType(XElement simpleType, SchemaContext context, HashSet<XElement> visited)
     {
         if (!visited.Add(simpleType))
         {
-            return (null, null);
+            return new ValueMetadata(null, null, Array.Empty<string>());
         }
 
         var restriction = simpleType.Element(XsdNs + "restriction");
         if (restriction != null)
         {
             var baseName = ResolveQualifiedName(restriction, restriction.Attribute("base")?.Value);
-            var (baseDescription, baseExample) = baseName != null && context.SimpleTypes.TryGetValue(baseName, out var baseSimple)
+            var baseMetadata = baseName != null && context.SimpleTypes.TryGetValue(baseName, out var baseSimple)
                 ? DescribeSimpleType(baseSimple, context, visited)
                 : DescribeBuiltInType(baseName);
 
             var facets = new List<string>();
-            var example = baseExample;
+            var example = baseMetadata.Example;
+            var allowedValues = new List<string>(baseMetadata.AllowedValues);
 
             var enums = restriction.Elements(XsdNs + "enumeration")
                 .Select(e => e.Attribute("value")?.Value)
                 .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Select(v => v!.Trim())
                 .ToList();
             if (enums.Any())
             {
+                allowedValues.AddRange(enums);
                 facets.Add("Allowed values: " + string.Join(", ", enums.Take(5)) + (enums.Count > 5 ? ", ..." : string.Empty));
-                example ??= enums.First();
+                example ??= enums.FirstOrDefault();
             }
 
             string? lengthDesc = BuildLengthDescription(restriction);
             if (!string.IsNullOrWhiteSpace(lengthDesc))
             {
                 facets.Add(lengthDesc);
+                example ??= GenerateLengthExample(lengthDesc);
             }
 
             var numericDesc = BuildNumericDescription(restriction);
@@ -652,7 +673,7 @@ public class WsdlParser
             {
                 facets.Add(numericDesc.Description);
             }
-            example ??= numericDesc.Example ?? baseExample;
+            example ??= numericDesc.Example ?? baseMetadata.Example;
 
             var pattern = restriction.Elements(XsdNs + "pattern")
                 .Select(p => p.Attribute("value")?.Value)
@@ -665,26 +686,32 @@ public class WsdlParser
 
             visited.Remove(simpleType);
             var descriptionParts = new List<string>();
-            if (!string.IsNullOrWhiteSpace(baseDescription))
+            if (!string.IsNullOrWhiteSpace(baseMetadata.Description))
             {
-                descriptionParts.Add(baseDescription);
+                descriptionParts.Add(baseMetadata.Description);
             }
             descriptionParts.AddRange(facets);
-            return (descriptionParts.Count == 0 ? null : string.Join("; ", descriptionParts), example);
+            return new ValueMetadata(
+                descriptionParts.Count == 0 ? null : string.Join("; ", descriptionParts),
+                example,
+                allowedValues);
         }
 
         var list = simpleType.Element(XsdNs + "list");
         if (list != null)
         {
             var itemType = ResolveQualifiedName(list, list.Attribute("itemType")?.Value);
-            var (desc, example) = DescribeBuiltInType(itemType);
-            var listExample = example != null ? $"{example} {example}" : null;
+            var itemMetadata = DescribeBuiltInType(itemType);
+            var listExample = itemMetadata.Example != null ? $"{itemMetadata.Example} {itemMetadata.Example}" : null;
             visited.Remove(simpleType);
-            return ($"Space-separated list of {desc ?? itemType?.LocalName}", listExample);
+            return new ValueMetadata(
+                $"Space-separated list of {itemMetadata.Description ?? itemType?.LocalName}",
+                listExample,
+                itemMetadata.AllowedValues);
         }
 
         visited.Remove(simpleType);
-        return (null, null);
+        return new ValueMetadata(null, null, Array.Empty<string>());
     }
 
     private static string? BuildLengthDescription(XElement restriction)
