@@ -23,8 +23,17 @@ public class WsdlParser
         var loader = new DocumentLoader(_httpClient);
         var documents = await loader.LoadAsync(request, cancellationToken);
 
-        var wsdlDocuments = documents.Where(d => d.Document.Root?.Name.LocalName.Equals("definitions", StringComparison.OrdinalIgnoreCase) == true).ToList();
-        var manifestDocuments = documents.Except(wsdlDocuments).ToList();
+        var wsdlDocuments = documents
+            .Where(d => d.Document.Root?.Name.LocalName.Equals("definitions", StringComparison.OrdinalIgnoreCase) == true)
+            .ToList();
+        var schemaDocuments = documents
+            .Except(wsdlDocuments)
+            .Where(d => d.Document.Root?.Name == XsdNs + "schema")
+            .ToList();
+        var manifestDocuments = documents
+            .Except(wsdlDocuments)
+            .Except(schemaDocuments)
+            .ToList();
 
         var messageMap = new Dictionary<string, XElement>();
         var schemaContext = new SchemaContext();
@@ -35,6 +44,10 @@ public class WsdlParser
             MergeMessages(doc.Document, messageMap);
             MergeSchemas(doc.Document, schemaContext);
             MergePortOperations(doc.Document, portOperations, doc);
+        }
+        foreach (var doc in schemaDocuments)
+        {
+            MergeSchemas(doc.Document, schemaContext);
         }
 
         var operations = new List<WsdlOperationDescriptor>();
