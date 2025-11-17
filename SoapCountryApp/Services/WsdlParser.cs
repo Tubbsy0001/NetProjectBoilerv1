@@ -402,7 +402,7 @@ public class WsdlParser
             return sampleXml;
         }
 
-        var cleaned = Regex.Replace(sampleXml, @">(\\s*)\{value\}(\\s*)<", m => $">{replacement}<", RegexOptions.Multiline);
+        var cleaned = Regex.Replace(sampleXml, @">\s*\{value\}\s*<", $">{replacement}<", RegexOptions.Multiline);
         if (cleaned.Contains("{value}"))
         {
             cleaned = cleaned.Replace("{value}", replacement);
@@ -609,6 +609,7 @@ public class WsdlParser
     }
 
     private sealed record ValueMetadata(string? Description, string? Example, IReadOnlyList<string> AllowedValues);
+    private sealed record LengthInfo(int? ExactLength, int? MinLength, int? MaxLength, string? Description);
 
     private static ValueMetadata DescribeValueMetadata(XElement? element, SchemaContext context, XName? resolvedType)
     {
@@ -669,12 +670,12 @@ public class WsdlParser
                 example ??= enums.FirstOrDefault();
             }
 
-            string? lengthDesc = BuildLengthDescription(restriction);
-            if (!string.IsNullOrWhiteSpace(lengthDesc))
+            var lengthInfo = BuildLengthInfo(restriction);
+            if (!string.IsNullOrWhiteSpace(lengthInfo.Description))
             {
-                facets.Add(lengthDesc);
-                example ??= GenerateLengthExample(lengthDesc);
+                facets.Add(lengthInfo.Description);
             }
+            example ??= GenerateLengthExample(lengthInfo);
 
             var numericDesc = BuildNumericDescription(restriction);
             if (!string.IsNullOrWhiteSpace(numericDesc.Description))
@@ -722,33 +723,45 @@ public class WsdlParser
         return new ValueMetadata(null, null, Array.Empty<string>());
     }
 
-    private static string? BuildLengthDescription(XElement restriction)
+    private static LengthInfo BuildLengthInfo(XElement restriction)
     {
-        var length = restriction.Element(XsdNs + "length")?.Attribute("value")?.Value;
-        if (!string.IsNullOrWhiteSpace(length))
+        int? Parse(string? text) => int.TryParse(text, out var value) ? value : null;
+
+        var exact = Parse(restriction.Element(XsdNs + "length")?.Attribute("value")?.Value);
+        var min = Parse(restriction.Element(XsdNs + "minLength")?.Attribute("value")?.Value);
+        var max = Parse(restriction.Element(XsdNs + "maxLength")?.Attribute("value")?.Value);
+
+        string? description = null;
+        if (exact.HasValue)
         {
-            return $"Exact length: {length}";
+            description = $"Exact length: {exact}";
+        }
+        else if (min.HasValue && max.HasValue)
+        {
+            description = $"Length between {min} and {max}";
+        }
+        else if (min.HasValue)
+        {
+            description = $"Minimum length: {min}";
+        }
+        else if (max.HasValue)
+        {
+            description = $"Maximum length: {max}";
         }
 
-        var minLength = restriction.Element(XsdNs + "minLength")?.Attribute("value")?.Value;
-        var maxLength = restriction.Element(XsdNs + "maxLength")?.Attribute("value")?.Value;
+        return new LengthInfo(exact, min, max, description);
+    }
 
-        if (!string.IsNullOrWhiteSpace(minLength) && !string.IsNullOrWhiteSpace(maxLength))
+    private static string? GenerateLengthExample(LengthInfo info)
+    {
+        var length = info.ExactLength ?? info.MinLength ?? info.MaxLength;
+        if (!length.HasValue)
         {
-            return $"Length between {minLength} and {maxLength}";
+            return null;
         }
 
-        if (!string.IsNullOrWhiteSpace(minLength))
-        {
-            return $"Minimum length: {minLength}";
-        }
-
-        if (!string.IsNullOrWhiteSpace(maxLength))
-        {
-            return $"Maximum length: {maxLength}";
-        }
-
-        return null;
+        var count = Math.Clamp(length.Value, 1, 10);
+        return new string('A', count);
     }
 
     private static (string? Description, string? Example) BuildNumericDescription(XElement restriction)
@@ -858,11 +871,11 @@ public class WsdlParser
         return int.TryParse(text, out var value) ? value : null;
     }
 
-    private static (string? description, string? example) DescribeBuiltInType(XName? typeName)
+    private static ValueMetadata DescribeBuiltInType(XName? typeName)
     {
         if (typeName == null)
         {
-            return (null, null);
+            return new ValueMetadata(null, null, Array.Empty<string>());
         }
 
         if (typeName.Namespace == XsdNs)
@@ -870,47 +883,46 @@ public class WsdlParser
             switch (typeName.LocalName)
             {
                 case "string":
-                    return ("Text", "SampleText");
+                    return new ValueMetadata("Text", "SampleText", Array.Empty<string>());
                 case "normalizedString":
-                    return ("Text (no line breaks)", "SampleText");
+                    return new ValueMetadata("Text (no line breaks)", "SampleText", Array.Empty<string>());
                 case "token":
-                    return ("Tokenized text", "TokenValue");
+                    return new ValueMetadata("Tokenized text", "TokenValue", Array.Empty<string>());
                 case "boolean":
-                    return ("Boolean (true/false)", "true");
+                    return new ValueMetadata("Boolean (true/false)", "true", new[] { "true", "false" });
                 case "decimal":
-                    return ("Decimal number", "123.45");
+                    return new ValueMetadata("Decimal number", "123.45", Array.Empty<string>());
                 case "integer":
-                    return ("Integer", "123");
                 case "int":
-                    return ("32-bit integer", "123");
+                    return new ValueMetadata("Integer", "123", Array.Empty<string>());
                 case "long":
-                    return ("64-bit integer", "123456789");
+                    return new ValueMetadata("64-bit integer", "123456789", Array.Empty<string>());
                 case "short":
-                    return ("16-bit integer", "1200");
+                    return new ValueMetadata("16-bit integer", "1200", Array.Empty<string>());
                 case "byte":
-                    return ("8-bit signed integer", "64");
+                    return new ValueMetadata("8-bit signed integer", "64", Array.Empty<string>());
                 case "positiveInteger":
-                    return ("Positive integer", "1");
+                    return new ValueMetadata("Positive integer", "1", Array.Empty<string>());
                 case "nonNegativeInteger":
-                    return ("Non-negative integer", "0");
+                    return new ValueMetadata("Non-negative integer", "0", Array.Empty<string>());
                 case "double":
-                    return ("Double precision number", "123.45");
+                    return new ValueMetadata("Double precision number", "123.45", Array.Empty<string>());
                 case "float":
-                    return ("Floating point number", "123.45");
+                    return new ValueMetadata("Floating point number", "123.45", Array.Empty<string>());
                 case "date":
-                    return ("Date (YYYY-MM-DD)", DateTime.UtcNow.ToString("yyyy-MM-dd"));
+                    return new ValueMetadata("Date (YYYY-MM-DD)", DateTime.UtcNow.ToString("yyyy-MM-dd"), Array.Empty<string>());
                 case "dateTime":
-                    return ("Date & time (ISO 8601)", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+                    return new ValueMetadata("Date & time (ISO 8601)", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"), Array.Empty<string>());
                 case "time":
-                    return ("Time (HH:MM:SS)", DateTime.UtcNow.ToString("HH:mm:ss"));
+                    return new ValueMetadata("Time (HH:MM:SS)", DateTime.UtcNow.ToString("HH:mm:ss"), Array.Empty<string>());
                 case "base64Binary":
-                    return ("Base64 encoded binary", "U2FtcGxl");
+                    return new ValueMetadata("Base64 encoded binary", "U2FtcGxl", Array.Empty<string>());
                 case "anyURI":
-                    return ("URI", "https://api.example.com");
+                    return new ValueMetadata("URI", "https://api.example.com", Array.Empty<string>());
             }
         }
 
-        return ($"Type: {typeName.LocalName}", null);
+        return new ValueMetadata($"Type: {typeName.LocalName}", null, Array.Empty<string>());
     }
 
     private sealed record WsdlDocument(Uri Source, XDocument Document);
