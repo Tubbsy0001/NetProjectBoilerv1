@@ -65,6 +65,7 @@ public class SearchHistoryStore
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList(),
                 FollowImports = entry.FollowImports,
+                ExecutionEndpoint = entry.ExecutionEndpoint?.Trim(),
                 SavedAt = DateTime.UtcNow
             };
 
@@ -78,6 +79,7 @@ public class SearchHistoryStore
                     PrimarySource = normalizedEntry.PrimarySource,
                     AdditionalSources = normalizedEntry.AdditionalSources,
                     FollowImports = normalizedEntry.FollowImports,
+                    ExecutionEndpoint = normalizedEntry.ExecutionEndpoint,
                     SavedAt = DateTime.UtcNow
                 };
             }

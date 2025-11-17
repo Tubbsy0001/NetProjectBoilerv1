@@ -6,6 +6,7 @@ public class SearchHistoryEntry
     public string? PrimarySource { get; init; }
     public List<string> AdditionalSources { get; init; } = new();
     public bool FollowImports { get; init; }
+    public string? ExecutionEndpoint { get; init; }
     public DateTime SavedAt { get; init; } = DateTime.UtcNow;
 
     public string DisplayName =>
@@ -22,6 +23,7 @@ public class SearchHistoryEntry
 
         return string.Equals(Normalize(PrimarySource), Normalize(other.PrimarySource), StringComparison.OrdinalIgnoreCase)
                && FollowImports == other.FollowImports
+               && string.Equals(Normalize(ExecutionEndpoint), Normalize(other.ExecutionEndpoint), StringComparison.OrdinalIgnoreCase)
                && NormalizeSources(AdditionalSources!)
                    .SequenceEqual(NormalizeSources(other.AdditionalSources!), StringComparer.OrdinalIgnoreCase);
     }
@@ -31,6 +33,7 @@ public class SearchHistoryEntry
         var hash = new HashCode();
         hash.Add(Normalize(PrimarySource), StringComparer.OrdinalIgnoreCase);
         hash.Add(FollowImports);
+        hash.Add(Normalize(ExecutionEndpoint), StringComparer.OrdinalIgnoreCase);
         foreach (var src in NormalizeSources(AdditionalSources!))
         {
             hash.Add(src, StringComparer.OrdinalIgnoreCase);
