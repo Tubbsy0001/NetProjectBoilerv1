@@ -297,8 +297,15 @@ public class WsdlParser
                 var manifestHint = BuildManifestValueHint(parameter, typeName);
                 var manifestExample = parameter.Element("Example")?.Value
                                       ?? parameter.Attribute("example")?.Value;
+                var allowedValues = parameter
+                    .Elements("AllowedValue")
+                    .Select(e => e.Value)
+                    .Where(v => !string.IsNullOrWhiteSpace(v))
+                    .Select(v => v.Trim())
+                    .ToList();
 
-                var decoratedSample = DecorateSample(sample, manifestHint, manifestExample);
+                var metadata = new ValueMetadata(manifestHint, manifestExample, allowedValues);
+                var decoratedSample = DecorateSample(sample, metadata);
                 parameters.Add(new WsdlParameterDescriptor(
                     paramName,
                     typeName,
@@ -306,7 +313,8 @@ public class WsdlParser
                     decoratedSample,
                     description,
                     manifestHint,
-                    manifestExample));
+                    manifestExample ?? allowedValues.FirstOrDefault(),
+                    allowedValues));
             }
 
             operations.Add(new WsdlOperationDescriptor(
