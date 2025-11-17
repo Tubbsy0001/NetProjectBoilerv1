@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using SoapCountryApp.Models;
 
@@ -581,6 +582,8 @@ public class WsdlParser
         public Dictionary<XName, XElement> ComplexTypes { get; } = new();
         public Dictionary<XName, XElement> SimpleTypes { get; } = new();
     }
+
+    private sealed record ValueMetadata(string? Description, string? Example, IReadOnlyList<string> AllowedValues);
 
     private static (string? description, string? example) DescribeValueMetadata(XElement? element, SchemaContext context, XName? resolvedType)
     {
