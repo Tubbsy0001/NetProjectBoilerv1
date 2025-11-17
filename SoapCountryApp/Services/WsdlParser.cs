@@ -700,10 +700,15 @@ public class WsdlParser
                 descriptionParts.Add(baseMetadata.Description);
             }
             descriptionParts.AddRange(facets);
+            var normalizedAllowed = allowedValues
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Select(v => v.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
             return new ValueMetadata(
                 descriptionParts.Count == 0 ? null : string.Join("; ", descriptionParts),
                 example,
-                allowedValues);
+                normalizedAllowed);
         }
 
         var list = simpleType.Element(XsdNs + "list");

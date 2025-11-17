@@ -185,6 +185,23 @@
                                                         {
                                                             <div class="text-muted small">@parameter.Description</div>
                                                         }
+                                                        @if (parameter.AllowedValues?.Count > 0)
+                                                        {
+                                                            <div class="allowed-values text-muted small mt-1">
+                                                                <span class="fw-semibold">Allowed:</span>
+                                                                @if (parameter.AllowedValues.Count <= 5)
+                                                                {
+                                                                    @string.Join(", ", parameter.AllowedValues)
+                                                                }
+                                                                else
+                                                                {
+                                                                    <details>
+                                                                        <summary>show list (@parameter.AllowedValues.Count)</summary>
+                                                                        <div>@string.Join(", ", parameter.AllowedValues)</div>
+                                                                    </details>
+                                                                }
+                                                            </div>
+                                                        }
                                                     </td>
                                                     <td class="text-muted small">
                                                         @(string.IsNullOrWhiteSpace(parameter.TypeName) ? "—" : parameter.TypeName)

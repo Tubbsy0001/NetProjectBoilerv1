@@ -208,6 +208,14 @@ body {
   padding: 0.1rem 0.3rem;
 }
 
+.allowed-values summary {
+  cursor: pointer;
+}
+
+.allowed-values summary::marker {
+  color: #475569;
+}
+
 .execution-panel {
   border: 1px dashed rgba(148, 163, 184, 0.6);
   border-radius: 1rem;
