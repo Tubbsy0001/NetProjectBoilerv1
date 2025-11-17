@@ -4,6 +4,7 @@
     "primarySource": "https://www.dataaccess.com/webservicesserver/numberconversion.wso?WSDL",
     "additionalSources": [],
     "followImports": true,
+    "executionEndpoint": null,
     "savedAt": "2025-11-17T00:04:39.1332202Z",
     "displayName": "https://www.dataaccess.com/webservicesserver/numberconversion.wso?WSDL"
   },
@@ -12,7 +13,8 @@
     "primarySource": "http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL",
     "additionalSources": [],
     "followImports": true,
-    "savedAt": "2025-11-17T00:20:49.7730729Z",
+    "executionEndpoint": null,
+    "savedAt": "2025-11-17T00:33:50.2261099Z",
     "displayName": "http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL"
   }
 ]
