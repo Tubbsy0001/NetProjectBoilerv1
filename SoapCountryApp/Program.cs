@@ -1,32 +1,24 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllersWithViews();
-
-// Add the HTTP client for soapservice
-builder.Services.AddHttpClient<SoapCountryApp.Services.SoapClientService>();
+builder.Services.AddHttpClient<SoapCountryApp.Services.WsdlParser>();
+builder.Services.AddSingleton<SoapCountryApp.Services.SearchHistoryStore>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseExceptionHandler("/Soap/Index");
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseRouting();
-
 app.UseAuthorization();
-
-app.MapStaticAssets();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
-
+    pattern: "{controller=Soap}/{action=Index}/{id?}");
 
 app.Run();

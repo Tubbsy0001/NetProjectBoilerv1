@@ -1,0 +1,18 @@
+[
+  {
+    "id": "0b289869-9ad2-435b-b37d-1d11e13a63e2",
+    "primarySource": "https://www.dataaccess.com/webservicesserver/numberconversion.wso?WSDL",
+    "additionalSources": [],
+    "followImports": true,
+    "savedAt": "2025-11-17T00:04:39.1332202Z",
+    "displayName": "https://www.dataaccess.com/webservicesserver/numberconversion.wso?WSDL"
+  },
+  {
+    "id": "1ca201fe-033d-4b23-939b-0d765df63208",
+    "primarySource": "http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL",
+    "additionalSources": [],
+    "followImports": true,
+    "savedAt": "2025-11-17T00:20:49.7730729Z",
+    "displayName": "http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL"
+  }
+]
