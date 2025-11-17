@@ -37,6 +37,7 @@ public class SoapController : Controller
                 model.WsdlUrl = entry.PrimarySource;
                 model.AdditionalSources = string.Join(Environment.NewLine, entry.AdditionalSources);
                 model.FollowImports = entry.FollowImports;
+                model.ExecutionEndpoint = entry.ExecutionEndpoint;
             }
         }
 
@@ -85,7 +86,8 @@ public class SoapController : Controller
                 {
                     PrimarySource = model.WsdlUrl,
                     AdditionalSources = model.AdditionalSourceList.ToList(),
-                    FollowImports = model.FollowImports
+                    FollowImports = model.FollowImports,
+                    ExecutionEndpoint = model.ExecutionEndpoint
                 }, cancellationToken);
 
                 model.SavedSearches = (await _historyStore.GetAllAsync(cancellationToken)).ToList();
