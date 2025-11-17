@@ -14,7 +14,16 @@
     "additionalSources": [],
     "followImports": true,
     "executionEndpoint": null,
-    "savedAt": "2025-11-17T00:33:50.2261099Z",
+    "savedAt": "2025-11-17T00:39:50.3721135Z",
+    "displayName": "http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL"
+  },
+  {
+    "id": "894413aa-ddd6-4b4a-a5bd-178aa571dee5",
+    "primarySource": "http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL",
+    "additionalSources": [],
+    "followImports": true,
+    "executionEndpoint": "http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso",
+    "savedAt": "2025-11-17T00:40:12.5112078Z",
     "displayName": "http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL"
   }
 ]
